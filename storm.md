@@ -5,7 +5,7 @@ Liang Dong
 
 In this report, the storm data recored by National Weather Service from 1950 to 2011 in U.S.  will be analyzed to determined which weather event type is most harmful to pulic health, and which weather event type did most damage to economics especially on crops and property. In the analysis, the result has been found that **Tornado** did most damage to public health, and **Flood** did most damage on economics.
 
-# Loading and Pre-Processing the Data
+# Data Processing
 
 First load the packages for chunks running in this document.
 
