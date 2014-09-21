@@ -1,4 +1,4 @@
-# Public Health and Economic Damage Analysis based on Different Storm Event Type From 1950 to 2011 in U.S.
+# Public Health and Economic Damage Analysis based on Different Weather Event Type From 1950 to 2011 in U.S.
 Liang Dong  
 20 September 2014  
 # Synopsis
@@ -113,11 +113,11 @@ head(storm_data)
 
 ## Pre-processing the Data
 
-In this assignment, two question are addressed. The first question addressed on population health, which is related to the column "FATALITIES" and "INJURIES", while the second question addressed on economic consequences, which is related to column "PROPDMG", "PROPDMGEXP", "CROPDMG" and "CROPDMGEXP". So two different data will be prepared in this section for two different questions.
+In this report, two question are addressed. The first question addressed on public population health, which is related to the column "FATALITIES" and "INJURIES", while the second question addressed on economic consequences, which is related to column "PROPDMG", "PROPDMGEXP", "CROPDMG" and "CROPDMGEXP". So two different data will be prepared in this section for two different questions.
 
-### Pre-processing the Data for Population Health
+### Pre-processing the Data for Public Health
 
-To pre-process the data for health impact, first the useful columns should be subtracted from the raw data. Then calculate the sum for each event type. Because there are too many event types, only the top 10 result will be showing in the processed data.
+To pre-process the data for public health impact, first three useful columns "EVTYPE", "FATALITIES" and "INJURIES" should be subtracted from the raw data. Then calculate the sum for each weather event type. Because there are too many event types, only the 10 weather event type which did most damage to public health will be showing in the processed data. Finally the processed data will be converted into the bar plot ready data frame for plotting. The final bar diagram will be shown in the result section.
 
 
 ```r
@@ -157,23 +157,23 @@ After processing, the top 10 event types summary are listed here:
 
 
 ```r
-kable(top_10)
+kable(top_10, align = "c")
 ```
 
 
 
-| Fatalities| Injuries|Event             |   Sum|
-|----------:|--------:|:-----------------|-----:|
-|       5633|    91346|TORNADO           | 96979|
-|       1903|     6525|EXCESSIVE HEAT    |  8428|
-|        504|     6957|TSTM WIND         |  7461|
-|        470|     6789|FLOOD             |  7259|
-|        816|     5230|LIGHTNING         |  6046|
-|        937|     2100|HEAT              |  3037|
-|        978|     1777|FLASH FLOOD       |  2755|
-|         89|     1975|ICE STORM         |  2064|
-|        133|     1488|THUNDERSTORM WIND |  1621|
-|        206|     1321|WINTER STORM      |  1527|
+| Fatalities | Injuries |       Event       |  Sum  |
+|:----------:|:--------:|:-----------------:|:-----:|
+|    5633    |  91346   |      TORNADO      | 96979 |
+|    1903    |   6525   |  EXCESSIVE HEAT   | 8428  |
+|    504     |   6957   |     TSTM WIND     | 7461  |
+|    470     |   6789   |       FLOOD       | 7259  |
+|    816     |   5230   |     LIGHTNING     | 6046  |
+|    937     |   2100   |       HEAT        | 3037  |
+|    978     |   1777   |    FLASH FLOOD    | 2755  |
+|     89     |   1975   |     ICE STORM     | 2064  |
+|    133     |   1488   | THUNDERSTORM WIND | 1621  |
+|    206     |   1321   |   WINTER STORM    | 1527  |
 
 ### Pre-processing the Data for Economic Consequences
 
@@ -186,16 +186,20 @@ According to the current level of "CROPDMGEXP" and "PROPDMGEXP", there are multi
 levels(storm_data$CROPDMGEXP)
 ```
 
-[1] ""  "?" "0" "2" "B" "k" "K" "m" "M"
+```
+## [1] ""  "?" "0" "2" "B" "k" "K" "m" "M"
+```
 
 ```r
 levels(storm_data$PROPDMGEXP)
 ```
 
- [1] ""  "-" "?" "+" "0" "1" "2" "3" "4" "5" "6" "7" "8" "B" "h" "H" "K"
-[18] "m" "M"
+```
+##  [1] ""  "-" "?" "+" "0" "1" "2" "3" "4" "5" "6" "7" "8" "B" "h" "H" "K"
+## [18] "m" "M"
+```
 
-In this analysis, the "-", "?", "+" in unit of Property Damage and Crop Damage will be consider invalid levels. So those levels will be remove from the storm database.
+In this analysis, the "-", "?", "+" in unit of Property Damage and Crop Damage will be consider invalid levels. So those levels will be replaced by 0 from the storm database.
 
 
 ```r
@@ -205,7 +209,12 @@ economic <- storm_data[, c("EVTYPE", "PROPDMG", "PROPDMGEXP", "CROPDMG", "CROPDM
 # Replace the invalid character in exp column
 economic$PROPDMGEXP[economic$PROPDMGEXP %in% c("?", "", "-", "+")] <- 0
 economic$CROPDMGEXP[economic$CROPDMGEXP %in% c("?", "", "-", "+")] <- 0
+```
 
+Then the "CROPDMGEXP" and "PROPDMGEXP" will be unified to numbers, by replacing the B, h, H, k, K, m and M to corresponding numbers. 
+
+
+```r
 # Unified the exp column to the same level
 levels(economic$PROPDMGEXP) <- c(levels(economic$PROPDMGEXP), 9)
 levels(economic$CROPDMGEXP) <- c(levels(economic$CROPDMGEXP), rep(0:9))
@@ -222,7 +231,12 @@ economic$CROPDMGEXP[economic$CROPDMGEXP == "k"] <- 3
 economic$CROPDMGEXP[economic$CROPDMGEXP == "K"] <- 3
 economic$CROPDMGEXP[economic$CROPDMGEXP == "m"] <- 6
 economic$CROPDMGEXP[economic$CROPDMGEXP == "M"] <- 6
+```
 
+Then calculate the sum of the property damage, crop damage and total damage base on weather event types, and ordered from top to bottom and get 10 most economic damage weather types. Finally convert the data frame into the bar chart plot ready data frame for plotting.
+
+
+```r
 # Calculate the sum of corp damage and property damage
 economic$CropSum <- economic$CROPDMG * 10^as.numeric(as.character(economic$CROPDMGEXP))
 economic$PropSum <- economic$PROPDMG * 10^as.numeric(as.character(economic$PROPDMGEXP))
@@ -252,44 +266,44 @@ temp$Type <- rep("Crop", 10)
 economic_bar <- rbind(economic_bar, temp)
 ```
 
-The top 10 economic damage did by event type is:
+The top 10 weather event which did most economic damage did are:
 
 
 ```r
-kable(economic_top10)
+kable(economic_top10, align = "c")
 ```
 
 
 
-|       Sum|   CropSum|   PropSum|Type              |
-|---------:|---------:|---------:|:-----------------|
-| 1.503e+11| 5.662e+09| 1.447e+11|FLOOD             |
-| 7.191e+10| 2.608e+09| 6.931e+10|HURRICANE/TYPHOON |
-| 5.736e+10| 4.150e+08| 5.695e+10|TORNADO           |
-| 4.332e+10| 5.000e+03| 4.332e+10|STORM SURGE       |
-| 1.876e+10| 3.026e+09| 1.574e+10|HAIL              |
-| 1.824e+10| 1.421e+09| 1.682e+10|FLASH FLOOD       |
-| 1.502e+10| 1.397e+10| 1.046e+09|DROUGHT           |
-| 1.461e+10| 2.742e+09| 1.187e+10|HURRICANE         |
-| 1.015e+10| 5.029e+09| 5.119e+09|RIVER FLOOD       |
-| 8.967e+09| 5.022e+09| 3.945e+09|ICE STORM         |
+|    Sum    |  CropSum  |  PropSum  |       Type        |
+|:---------:|:---------:|:---------:|:-----------------:|
+| 1.503e+11 | 5.662e+09 | 1.447e+11 |       FLOOD       |
+| 7.191e+10 | 2.608e+09 | 6.931e+10 | HURRICANE/TYPHOON |
+| 5.736e+10 | 4.150e+08 | 5.695e+10 |      TORNADO      |
+| 4.332e+10 | 5.000e+03 | 4.332e+10 |    STORM SURGE    |
+| 1.876e+10 | 3.026e+09 | 1.574e+10 |       HAIL        |
+| 1.824e+10 | 1.421e+09 | 1.682e+10 |    FLASH FLOOD    |
+| 1.502e+10 | 1.397e+10 | 1.046e+09 |      DROUGHT      |
+| 1.461e+10 | 2.742e+09 | 1.187e+10 |     HURRICANE     |
+| 1.015e+10 | 5.029e+09 | 5.119e+09 |    RIVER FLOOD    |
+| 8.967e+09 | 5.022e+09 | 3.945e+09 |     ICE STORM     |
 
 # Results
 
 ## The Result for Health Impact for each Event
 
-The below bar chart shows the event type Tornado has the biggest impact on health because it cause 96979 deaths and injuries. Other event types are much lower than Tornado. The second to tenth event is Excessive Heat, Tstm Wind, Flood, Lightning, Heat, Flash Flood, Ice Storm, Thunderstorm Wind, Winter Storm, which the impact numbers are from 8428 to 1527.
+The below bar chart shows the weather event type **Tornado** has the biggest impact on public health because it cause 96979 deaths and injuries. Other event types are much lower than Tornado. The second to tenth weather event are Excessive Heat, Tstm Wind, Flood, Lightning, Heat, Flash Flood, Ice Storm, Thunderstorm Wind, Winter Storm, which the impact numbers are from 8428 to 1527.
 
 
 ```r
-ggplot(health_bar, aes(reorder(Event, Number), Number, fill=Type)) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + xlab("Event Types") + ylab("Sum of Fatalities and Injuries") + ggtitle("Population Health Impact by\n Different Weather Types in U.S.\n 1950 - 2011")
+ggplot(health_bar, aes(reorder(Event, Number), Number, fill=Type)) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + xlab("Event Types") + ylab("Sum of Fatalities and Injuries") + ggtitle("Top Public Health Impact by\n Different Weather Types in U.S.\n 1950 - 2011")
 ```
 
 ![plot of chunk plot_health](./storm_files/figure-html/plot_health.png) 
 
 ## The Result for Economic Damage for each Event
 
-From the below bar plot, we can see the **Flood** event type has largest damage to the economic. Most of its damage are Prop damage. The second to tenth place are Hurrican/Typhoon, Tornado, Storm Surge, Hail, Flash Flood, Drought, Hurrican, River Flood, Ice Storm. Most of their damage are Prop damage except Drought, River Flood and Ice Storm, which they did damage mainly to Crop.
+From the below bar plot, we can see the **Flood** event type has largest damage to the economic. Most of its damage are Prop damage. The second to tenth place are Hurrican/Typhoon, Tornado, Storm Surge, Hail, Flash Flood, Drought, Hurrican, River Flood, Ice Storm. Most of their damage are property damage except Drought, River Flood and Ice Storm, which they did damage mainly to crop.
 
 
 ```r
