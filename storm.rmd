@@ -1,0 +1,191 @@
+---
+title: "Public Health and Economic Damage Analysis based on Different Storm Event Type From 1950 to 2011 in U.S."
+author: "Liang Dong"
+date: "20 September 2014"
+output: 
+    html_document:
+        highlights: tango
+        theme: readable
+        highlight: tango
+        toc: yes
+        keep_md: true
+---
+# Synopsis
+
+In this report, the storm data recored by National Weather Service from 1950 to 2011 in U.S.  will be analyzed to determined which weather event type is most harmful to pulic health, and which weather event type did most damage to economics especially on crops and property. In the analysis, the result has been found that **Tornado** did most damage to public health, and **Flood** did most damage on economics.
+
+# Loading and Pre-Processing the Data
+
+First load the packages for chunks running in this document.
+
+```{r setup}
+# set global chunk options
+library(knitr)
+library(R.utils)
+library(ggplot2)
+```
+
+## Download the Raw Data
+
+First download and unzip file from [Storm Data](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2). If the data is already exist, then load the csv directly.
+
+```{r download}
+if (!file.exists("storm_data.csv")) {
+    fileURL <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+    download.file(fileURL, destfile="storm_data.csv.bz2", method="curl")
+    bunzip2("storm_data.csv.bz2")    
+}
+
+storm_data <- read.csv("storm_data.csv")
+```
+
+## Overview of the Raw Data
+
+To have a initial view of the data, the head of the storm database will be listed here:
+
+```{r head}
+head(storm_data)
+```
+
+## Pre-processing the Data
+
+In this assignment, two question are addressed. The first question addressed on population health, which is related to the column "FATALITIES" and "INJURIES", while the second question addressed on economic consequences, which is related to column "PROPDMG", "PROPDMGEXP", "CROPDMG" and "CROPDMGEXP". So two different data will be prepared in this section for two different questions.
+
+### Pre-processing the Data for Population Health
+
+To pre-process the data for health impact, first the useful columns should be subtracted from the raw data. Then calculate the sum for each event type. Because there are too many event types, only the top 10 result will be showing in the processed data.
+
+```{r health}
+# Subset health related column and event column from raw data
+storm_data_health<-storm_data[,c("EVTYPE", "FATALITIES", "INJURIES")]
+
+# Calculate the sum of the fatalities and injuries for each event types
+health_result <- data.frame(tapply(storm_data_health$FATALITIES, storm_data_health$EVTYPE, sum))
+injuries <- data.frame(tapply(storm_data_health$INJURIES, storm_data_health$EVTYPE, sum), row.names = NULL)
+
+# Construct a new data frame for sum of each event types
+colnames(health_result) <- "Fatalities"
+colnames(injuries) <- "Injuries"
+health_result$Injuries <- injuries$Injuries
+health_result$Event <- row.names(health_result)
+row.names(health_result) <- NULL
+
+# Add a Sum Column to the new data frame
+health_result$Sum <- health_result$Fatalities+health_result$Injuries
+
+# Subset the top 10 event type on Sum
+top_10 <- head(health_result[order(-health_result$Sum),],10)
+row.names(top_10) <- NULL
+
+# Convert top 10 data frame into bar chart ready data frame
+
+health_bar <- top_10[, c("Event", "Injuries")] 
+colnames(health_bar) <- c("Event", "Number") 
+health_bar$Type <- rep("Injuries", 10)
+temp <- top_10[, c("Event", "Fatalities")]
+colnames(temp) <- c("Event", "Number") 
+temp$Type <- rep("Fatalities", 10)
+health_bar <- rbind(health_bar, temp)
+```
+
+After processing, the top 10 event types summary are listed here:
+
+```{r 10_most_health_damage, results='asis'}
+kable(top_10)
+```
+
+### Pre-processing the Data for Economic Consequences
+
+To pre-processing the data, it is essential to set the unit of "CROPDMGEXP" and "PROPDMGEXP" to the same level first.
+
+According to the current level of "CROPDMGEXP" and "PROPDMGEXP", there are multiple levels of unit, which are:
+
+```{r level, results='asis'}
+levels(storm_data$CROPDMGEXP)
+levels(storm_data$PROPDMGEXP)
+```
+
+In this analysis, the "-", "?", "+" in unit of Property Damage and Crop Damage will be consider invalid levels. So those levels will be remove from the storm database.
+
+```{r remove_invalid}
+# Substract the useful column from raw data
+economic <- storm_data[, c("EVTYPE", "PROPDMG", "PROPDMGEXP", "CROPDMG", "CROPDMGEXP")]
+
+# Replace the invalid character in exp column
+economic$PROPDMGEXP[economic$PROPDMGEXP %in% c("?", "", "-", "+")] <- 0
+economic$CROPDMGEXP[economic$CROPDMGEXP %in% c("?", "", "-", "+")] <- 0
+
+# Unified the exp column to the same level
+levels(economic$PROPDMGEXP) <- c(levels(economic$PROPDMGEXP), 9)
+levels(economic$CROPDMGEXP) <- c(levels(economic$CROPDMGEXP), rep(0:9))
+
+economic$PROPDMGEXP[economic$PROPDMGEXP == "B"] <- 9
+economic$PROPDMGEXP[economic$PROPDMGEXP == "h"] <- 2
+economic$PROPDMGEXP[economic$PROPDMGEXP == "H"] <- 2
+economic$PROPDMGEXP[economic$PROPDMGEXP == "K"] <- 3
+economic$PROPDMGEXP[economic$PROPDMGEXP == "m"] <- 6
+economic$PROPDMGEXP[economic$PROPDMGEXP == "M"] <- 6
+
+economic$CROPDMGEXP[economic$CROPDMGEXP == "B"] <- 9
+economic$CROPDMGEXP[economic$CROPDMGEXP == "k"] <- 3
+economic$CROPDMGEXP[economic$CROPDMGEXP == "K"] <- 3
+economic$CROPDMGEXP[economic$CROPDMGEXP == "m"] <- 6
+economic$CROPDMGEXP[economic$CROPDMGEXP == "M"] <- 6
+
+# Calculate the sum of corp damage and property damage
+economic$CropSum <- economic$CROPDMG * 10^as.numeric(as.character(economic$CROPDMGEXP))
+economic$PropSum <- economic$PROPDMG * 10^as.numeric(as.character(economic$PROPDMGEXP))
+
+# Calculate the total sum of economic damage
+economic$Sum <- economic$CropSum + economic$PropSum
+
+# Get top 10 damage of each event type
+economic <- economic[, c("EVTYPE", "CropSum", "PropSum", "Sum")]
+economic <- cbind(data.frame(tapply(economic$Sum, economic$EVTYPE, sum)), 
+              data.frame(tapply(economic$CropSum, economic$EVTYPE, sum)),
+              data.frame(tapply(economic$PropSum, economic$EVTYPE, sum)))
+colnames(economic) <- c("Sum", "CropSum", "PropSum")
+economic_top10 <- head(economic[order(-economic$Sum),],10)
+
+# Apply economic_top10 into bar chart ready data frame
+
+economic_top10$Type <- row.names(economic_top10)
+row.names(economic_top10) <- NULL
+
+economic_bar <- economic_top10[, c("Type", "PropSum")] 
+colnames(economic_bar) <- c("Event", "Damage") 
+economic_bar$Type <- rep("Prop", 10)
+temp <- economic_top10[, c("Type", "CropSum")]
+colnames(temp) <- c("Event", "Damage") 
+temp$Type <- rep("Crop", 10)
+economic_bar <- rbind(economic_bar, temp)
+```
+
+The top 10 economic damage did by event type is:
+
+```{r 10_most_economic_damage, results='asis'}
+kable(economic_top10)
+```
+
+# Results
+
+## The Result for Health Impact for each Event
+
+The below bar chart shows the event type Tornado has the biggest impact on health because it cause 96979 deaths and injuries. Other event types are much lower than Tornado. The second to tenth event is Excessive Heat, Tstm Wind, Flood, Lightning, Heat, Flash Flood, Ice Storm, Thunderstorm Wind, Winter Storm, which the impact numbers are from 8428 to 1527.
+
+```{r plot_health}
+ggplot(health_bar, aes(reorder(Event, Number), Number, fill=Type)) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + xlab("Event Types") + ylab("Sum of Fatalities and Injuries") + ggtitle("Population Health Impact by\n Different Weather Types in U.S.\n 1950 - 2011")
+```
+
+## The Result for Economic Damage for each Event
+
+From the below bar plot, we can see the **Flood** event type has largest damage to the economic. Most of its damage are Prop damage. The second to tenth place are Hurrican/Typhoon, Tornado, Storm Surge, Hail, Flash Flood, Drought, Hurrican, River Flood, Ice Storm. Most of their damage are Prop damage except Drought, River Flood and Ice Storm, which they did damage mainly to Crop.
+
+```{r plot_economic}
+ggplot(economic_bar, aes(reorder(Event, Damage), Damage, fill=Type)) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + xlab("Event Types") + ylab("Sum of Economic Damage") + ggtitle("Economic Damage by\n Different Weather Types in U.S.\n 1950 - 2011")
+```
+
+# Conclusion
+
+The **Tornado** is most harmful with respect to population health, while the **Flood** did most economic damage.
+
